@@ -37,7 +37,7 @@
       <p class="text-xs text-slate-400">Paste the URL of your Python backend hosted on Render / Railway here:</p>
       <div>
         <label class="block text-xs text-slate-300 mb-1">Backend API URL</label>
-        <input id="apiUrlInput" type="text" placeholder="https://your-vidpulse-backend.onrender.com/api/extract"
+        <input id="apiUrlInput" type="text" placeholder="https://33aftab33-vidpulse-ai-backend.hf.space/api/extract"
           class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-cyan-400" />
       </div>
       <div class="flex justify-end gap-2 pt-2">
@@ -160,7 +160,7 @@
     let extractedData = { summary: '', transcript: '', urdu: '', repurpose: '', title: '' };
 
     // Load saved backend URL
-    const savedApi = localStorage.getItem('vidpulse_api_url') || 'https://your-vidpulse-backend.onrender.com/api/extract';
+    const savedApi = localStorage.getItem('vidpulse_api_url') || 'https://33aftab33-vidpulse-ai-backend.hf.space/api/extract';
     document.getElementById('apiUrlInput').value = savedApi;
 
     function toggleSettings() {
@@ -224,7 +224,7 @@
       const url = document.getElementById('videoUrl').value.trim();
       if (!url) { showError('Please paste a video link first!'); return; }
 
-      const apiUrl = localStorage.getItem('vidpulse_api_url') || 'https://your-vidpulse-backend.onrender.com/api/extract';
+      const apiUrl = localStorage.getItem('vidpulse_api_url') || 'https://33aftab33-vidpulse-ai-backend.hf.space/api/extract';
       hideError();
       document.getElementById('loader').classList.remove('hidden');
       document.getElementById('resultSection').classList.add('hidden');
