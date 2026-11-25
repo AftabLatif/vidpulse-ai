@@ -34,15 +34,25 @@
   <div id="settingsModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
     <div class="glass rounded-2xl max-w-md w-full p-6 space-y-4">
       <h2 class="text-lg font-bold text-white">Backend Server Configuration</h2>
-      <p class="text-xs text-slate-400">Paste the URL of your Python backend hosted on Render / Railway here:</p>
+      <p class="text-xs text-slate-400">Paste the URL of your Python backend here:</p>
       <div>
         <label class="block text-xs text-slate-300 mb-1">Backend API URL</label>
-        <input id="apiUrlInput" type="text" placeholder="https://33aftab33-vidpulse-ai-backend.hf.space/api/extract"
+        <input id="apiUrlInput" type="text" placeholder="https://vidpulse-ai-backend-33270.containers.snapdeploy.app/api/extract"
+          class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-cyan-400" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-300 mb-1">Gemini API Key (optional — overrides the server key)</label>
+        <input id="apiKeyInput" type="password" placeholder="AIzaSy... (leave empty to use the server key)"
+          class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-cyan-400" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-300 mb-1">Access Code (this app is private — required)</label>
+        <input id="accessCodeInput" type="password" placeholder="Your private access code"
           class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-cyan-400" />
       </div>
       <div class="flex justify-end gap-2 pt-2">
         <button onclick="toggleSettings()" class="px-4 py-2 text-xs rounded-xl bg-slate-800 text-slate-300">Close</button>
-        <button onclick="saveSettings()" class="px-4 py-2 text-xs rounded-xl bg-cyan-500 text-slate-950 font-semibold">Save URL</button>
+        <button onclick="saveSettings()" class="px-4 py-2 text-xs rounded-xl bg-cyan-500 text-slate-950 font-semibold">Save Settings</button>
       </div>
     </div>
   </div>
@@ -99,7 +109,7 @@
     <div id="loader" class="hidden glass rounded-2xl p-8 text-center space-y-3">
       <div class="w-10 h-10 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
       <p id="loaderStep" class="text-sm font-medium text-cyan-300">Downloading audio...</p>
-      <p class="text-xs text-slate-400">This can take 10 to 20 seconds. If the backend is hosted on Render free tier, the first request can take up to a minute while the server wakes up.</p>
+      <p class="text-xs text-slate-400">This can take 10 to 20 seconds. If the backend is sleeping, the first request can take about a minute while it wakes up.</p>
     </div>
 
     <!-- Error Box -->
@@ -159,19 +169,22 @@
     let currentTab = 'summary';
     let extractedData = { summary: '', transcript: '', urdu: '', repurpose: '', title: '' };
 
-    // Load saved backend URL
-    const savedApi = localStorage.getItem('vidpulse_api_url') || 'https://33aftab33-vidpulse-ai-backend.hf.space/api/extract';
+    // Load saved backend URL + keys
+    const savedApi = localStorage.getItem('vidpulse_api_url') || 'https://vidpulse-ai-backend-33270.containers.snapdeploy.app/api/extract';
     document.getElementById('apiUrlInput').value = savedApi;
+    document.getElementById('apiKeyInput').value = localStorage.getItem('vidpulse_api_key') || '';
+    document.getElementById('accessCodeInput').value = localStorage.getItem('vidpulse_access_code') || '';
 
     function toggleSettings() {
       document.getElementById('settingsModal').classList.toggle('hidden');
     }
 
     function saveSettings() {
-      const val = document.getElementById('apiUrlInput').value.trim();
-      localStorage.setItem('vidpulse_api_url', val);
+      localStorage.setItem('vidpulse_api_url', document.getElementById('apiUrlInput').value.trim());
+      localStorage.setItem('vidpulse_api_key', document.getElementById('apiKeyInput').value.trim());
+      localStorage.setItem('vidpulse_access_code', document.getElementById('accessCodeInput').value.trim());
       toggleSettings();
-      alert('Backend API URL saved!');
+      alert('Settings saved!');
     }
 
     function detectPlatform() {
@@ -224,7 +237,9 @@
       const url = document.getElementById('videoUrl').value.trim();
       if (!url) { showError('Please paste a video link first!'); return; }
 
-      const apiUrl = localStorage.getItem('vidpulse_api_url') || 'https://33aftab33-vidpulse-ai-backend.hf.space/api/extract';
+      const apiUrl = localStorage.getItem('vidpulse_api_url') || 'https://vidpulse-ai-backend-33270.containers.snapdeploy.app/api/extract';
+      const apiKey = localStorage.getItem('vidpulse_api_key') || '';
+      const accessCode = localStorage.getItem('vidpulse_access_code') || '';
       hideError();
       document.getElementById('loader').classList.remove('hidden');
       document.getElementById('resultSection').classList.add('hidden');
@@ -246,12 +261,17 @@
           body: JSON.stringify({
             url: url,
             language: document.getElementById('langSelect').value,
-            detail: document.getElementById('detailSelect').value
+            detail: document.getElementById('detailSelect').value,
+            api_key: apiKey,
+            access_code: accessCode
           })
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Extraction failed');
+        if (!res.ok) {
+          if (res.status === 401) throw new Error('Wrong access code. Check the code in API Settings.');
+          throw new Error(data.detail || 'Extraction failed');
+        }
 
         extractedData = data;
         document.getElementById('videoTitle').textContent = data.title || 'Extracted Video Report';
@@ -265,7 +285,7 @@
         saveHistory(url, data.title || 'Extracted Video Report');
       } catch (err) {
         const msg = (err.message && err.message.includes('Failed to fetch'))
-          ? 'Could not reach the backend server. If it is hosted on Render free tier, it may be sleeping — wait about 30 seconds and press Retry. Also check that the API URL in Settings is correct.'
+          ? 'Could not reach the backend server. It may be sleeping — wait about 30 seconds and press Retry. Also check that the API URL in Settings is correct.'
           : 'Error: ' + err.message + ' Please check that your Python backend server is live and the API URL in Settings is correct.';
         showError(msg);
       } finally {
